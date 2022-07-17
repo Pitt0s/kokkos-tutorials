@@ -108,31 +108,37 @@ int main( int argc, char* argv[] )
 
   // EXERCISE: Create mirrors of the views on host.
 
-  // ViewVectorType::HostMirror h_y = Kokkos::create_mirror_view( y );
-  // ViewVectorType::HostMirror h_x = Kokkos::create_mirror_view( x );
-  // ViewMatrixType::HostMirror h_A = Kokkos::create_mirror_view( A );
+  auto h_y = Kokkos::create_mirror_view( y );
+  auto h_x = Kokkos::create_mirror_view( x );
+  auto h_A = Kokkos::create_mirror_view( A );
 
   // Initialize y vector on host.
   // EXERCISE: Use host version of y.
+//  Kokkos::parallel_for("init y", Kokkos::RangePolicy<Kokkos::HostSpace>(0,N), KOKKOS_LAMBDA ( int i ) {
   for ( int i = 0; i < N; ++i ) {
-    y( i ) = 1;
+    h_y( i ) = 1;
   }
 
   // Initialize x vector on host.
   // EXERCISE: Use host version of x.
+//  Kokkos::parallel_for("init x", Kokkos::RangePolicy<Kokkos::HostSpace>(0,M), KOKKOS_LAMBDA ( int i ) {
   for ( int i = 0; i < M; ++i ) {
-    x( i ) = 1;
+    h_x( i ) = 1;
   }
 
   // Initialize A matrix on host.
   // EXERCISE: Use host version of A.
+//  Kokkos::parallel_for("init A", Kokkos::RangePolicy<Kokkos::HostSpace>(0,N), KOKKOS_LAMBDA ( int j ) {
   for ( int j = 0; j < N; ++j ) {
     for ( int i = 0; i < M; ++i ) {
-      A( j, i ) = 1;
+     h_A( j, i ) = 1;
     }
   }
 
   // EXERCISE: Perform deep copy of host views to device views.
+  Kokkos::deep_copy(x, h_x);
+  Kokkos::deep_copy(y, h_y);
+  Kokkos::deep_copy(A, h_A);
 
   // Timer products.
   Kokkos::Timer timer;
@@ -141,7 +147,7 @@ int main( int argc, char* argv[] )
     // Application: <y,Ax> = y^T*A*x
     double result = 0;
 
-    Kokkos::parallel_reduce( N, KOKKOS_LAMBDA ( int j, double &update ) {
+    Kokkos::parallel_reduce("reduction", range_policy(0, N), KOKKOS_LAMBDA ( int j, double &update ) {
       double temp2 = 0;
 
       for ( int i = 0; i < M; ++i ) {

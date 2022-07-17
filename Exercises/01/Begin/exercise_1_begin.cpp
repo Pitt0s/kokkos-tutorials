@@ -52,8 +52,8 @@
 
 // EXERCISE: Include Kokkos_Core.hpp.
 //           cmath library unnecessary after.
-// #include <Kokkos_Core.hpp>
-#include <cmath>
+ #include <Kokkos_Core.hpp>
+// #include <cmath>
 
 void checkSizes( int &N, int &M, int &S, int &nrepeat );
 
@@ -98,7 +98,8 @@ int main( int argc, char* argv[] )
   // EXERCISE: Initialize Kokkos runtime.
   //           Include braces to encapsulate code between initialize and finalize calls
   // Kokkos::initialize( argc, argv );
-  // {
+  {
+  Kokkos::ScopeGuard g( argc, argv);
 
   // For the sake of simplicity in this exercise, we're using std::malloc directly, but
   // later on we'll learn a better way, so generally don't do this in Kokkos programs.
@@ -112,23 +113,23 @@ int main( int argc, char* argv[] )
 
   // Initialize y vector.
   // EXERCISE: Convert outer loop to Kokkos::parallel_for.
-  for ( int i = 0; i < N; ++i ) {
-    y[ i ] = 1;
-  }
-
+  Kokkos::parallel_for("init y", N, [=] (int i) {
+		  y[ i ] = 1;
+		  });
+  
   // Initialize x vector.
   // EXERCISE: Convert outer loop to Kokkos::parallel_for.
-  for ( int i = 0; i < M; ++i ) {
-    x[ i ] = 1;
-  }
+  Kokkos::parallel_for("init x", M, [=] (int i) {
+		  x[ i ] = 1;
+		  });
 
   // Initialize A matrix, note 2D indexing computation.
   // EXERCISE: Convert outer loop to Kokkos::parallel_for.
-  for ( int j = 0; j < N; ++j ) {
+  Kokkos::parallel_for("init A", N, [=] (int j) {
     for ( int i = 0; i < M; ++i ) {
       A[ j * M + i ] = 1;
     }
-  }
+  });
 
   // Timer products.
   //Kokkos::Timer timer;
@@ -141,15 +142,15 @@ int main( int argc, char* argv[] )
     double result = 0;
 
     // EXERCISE: Convert outer loop to Kokkos::parallel_reduce.
-    for ( int j = 0; j < N; ++j ) {
+    Kokkos::parallel_reduce("yAx", N, [=] (int j, double & temp1) {
       double temp2 = 0;
 
       for ( int i = 0; i < M; ++i ) {
         temp2 += A[ j * M + i ] * x[ i ];
       }
 
-      result += y[ j ] * temp2;
-    }
+      temp1 += y[ j ] * temp2;
+    }, result);
 
     // Output result.
     if ( repeat == ( nrepeat - 1 ) ) {
@@ -186,7 +187,7 @@ int main( int argc, char* argv[] )
   std::free(x);
 
   // EXERCISE: finalize Kokkos runtime
-  // }
+  }
   // Kokkos::finalize();
 
   return 0;

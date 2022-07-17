@@ -101,11 +101,11 @@ int main( int argc, char* argv[] )
   // typedef Kokkos::Serial   ExecSpace;
   // typedef Kokkos::Threads  ExecSpace;
   // typedef Kokkos::OpenMP   ExecSpace;
-  // typedef Kokkos::Cuda     ExecSpace;
+  typedef Kokkos::Cuda     ExecSpace;
 
   // EXERCISE: Choose device memory space.
   // typedef Kokkos::HostSpace     MemSpace;
-  // typedef Kokkos::CudaSpace     MemSpace;
+  typedef Kokkos::CudaSpace     MemSpace;
   // typedef Kokkos::CudaUVMSpace  MemSpace;
 
   // EXERCISE give-away: Choose a Layout.
@@ -114,15 +114,16 @@ int main( int argc, char* argv[] )
   //           However, performance will be different!
 
   // typedef Kokkos::LayoutLeft   Layout;
-  // typedef Kokkos::LayoutRight  Layout;
+  typedef Kokkos::LayoutRight  Layout;
 
   // EXERCISE give-away: Use a RangePolicy.
-  // typedef Kokkos::RangePolicy<ExecSpace>  range_policy;
+  typedef Kokkos::RangePolicy<ExecSpace>  range_policy;
+  typedef Kokkos::RangePolicy<Kokkos::HostSpace>  range_host;
 
   // Allocate y, x vectors and Matrix A on device.
   // EXERCISE: Use MemSpace and Layout.
-  typedef Kokkos::View<double*>   ViewVectorType;
-  typedef Kokkos::View<double**>  ViewMatrixType;
+  typedef Kokkos::View<double*, MemSpace>   ViewVectorType;
+  typedef Kokkos::View<double**, MemSpace>  ViewMatrixType;
   ViewVectorType y( "y", N );
   ViewVectorType x( "x", M );
   ViewMatrixType A( "A", N, M );
@@ -133,16 +134,19 @@ int main( int argc, char* argv[] )
   ViewMatrixType::HostMirror h_A = Kokkos::create_mirror_view( A );
 
   // Initialize y vector on host.
+//  Kokkos::parallel_for("init y", range_host(0, N), [=](int i) {
   for ( int i = 0; i < N; ++i ) {
     h_y( i ) = 1;
   }
 
   // Initialize x vector on host.
+//  Kokkos::parallel_for("init y", range_host(0, M), [=](int i) {
   for ( int i = 0; i < M; ++i ) {
     h_x( i ) = 1;
   }
 
   // Initialize A matrix on host.
+//  Kokkos::parallel_for("init y", range_host(0, N), [=](int j) {
   for ( int j = 0; j < N; ++j ) {
     for ( int i = 0; i < M; ++i ) {
       h_A( j, i ) = 1;
@@ -163,7 +167,7 @@ int main( int argc, char* argv[] )
 
     // EXERCISE: Use Kokkos::RangePolicy<ExecSpace> to execute parallel_reduce
     //           in the correct space.
-    Kokkos::parallel_reduce( N, KOKKOS_LAMBDA ( int j, double &update ) {
+    Kokkos::parallel_reduce("reduction", range_policy(0, N), KOKKOS_LAMBDA ( int j, double &update ) {
       double temp2 = 0;
 
       for ( int i = 0; i < M; ++i ) {
